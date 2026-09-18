@@ -357,11 +357,13 @@ performance is high on the current validation set (96.6\% and 99.2\% AP50 respec
 these metrics reflect the limited visual diversity of rare-class examples. Cross-dataset
 generalization remains untested.
 
-\subsection{Real-Time Deployment}
+\subsection{Field-Deployment Constraints}
 
 The current pipeline achieves 4.0 ms inference on RTX 5060 (batch=1, FP16, 800$\times$800),
-which is suitable for offline analysis but may require further optimization for onboard
-drone deployment (target: <10 ms on edge hardware). TensorRT quantization is planned.
+which is sufficient for real-time analysis on a consumer laptop in an outdoor setting. The
+motivating use case — running detection on a single laptop GPU without cloud or desktop
+hardware — is met by this configuration. TensorRT quantization is planned for further
+latency reduction on lower-power edge devices.
 
 % ======================================================================
 \section{Conclusion}

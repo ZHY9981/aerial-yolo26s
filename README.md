@@ -42,22 +42,20 @@ ablation experiments.
 ## Motivation & Real-World Significance
 
 While most computer vision research assumes access to high-end GPUs (A100, 4090) and large-scale
-cloud compute, the reality of drone-based visual intelligence is the opposite: **a UAV in the field
-carries a single embedded GPU with 4–8 GB of memory.** Whether it's a search-and-rescue drone
-scanning a mountain trail for a missing hiker, a traffic-monitoring UAV counting vehicles at an
-intersection, or an agricultural drone surveying crop health — none of these scenarios can afford
-the latency of a cloud round-trip, nor the power budget of a desktop-grade GPU.
+cloud compute, real-world work does not always afford that luxury. Fieldwork, in particular,
+means carrying a single laptop into the outdoors — and a laptop GPU carries only a few gigabytes
+of VRAM. This project grew out of exactly that situation: performing aerial object detection on
+a consumer laptop (RTX 5060, 8 GB VRAM) in an outdoor setting, where upgrading hardware or
+renting cloud GPUs is not an option.
 
-This project is motivated by the gap between what the literature achieves and what can actually
-be deployed. The question is not "how high can we push mAP with unlimited hardware?" — that's
-well-studied. The question is: **"How good can detection get under a hard 8 GB VRAM budget,
-and what architectural decisions matter most under that constraint?"**
+The question this project asks is therefore not "how high can we push mAP with unlimited
+hardware?" — that is well-studied. The question is: **"How good can detection get under a hard
+8 GB VRAM budget, and which design decisions matter most under that constraint?"**
 
 The applicant holds a CAAC Beyond-Visual-Line-of-Sight (BVLOS) UAV operator license, which
 provides first-hand domain knowledge of real drone flight conditions — altitude constraints,
-camera angles, image distortion, and the operational scenarios where onboard detection is
-genuinely needed. Understanding *why* small-object detection matters for drones comes from
-operating them, not just reading papers about them.
+camera angles, and image distortion. Understanding *why* aerial small-object detection matters
+comes from operating drones, not just reading papers about them.
 
 This project is an attempt to bridge that gap — applying rigorous, systematically ablated
 computer vision research to a problem defined by real-world deployment constraints.
