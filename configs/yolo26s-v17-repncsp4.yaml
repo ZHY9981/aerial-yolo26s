@@ -1,14 +1,15 @@
 # YOLO26s V17 — V16 + P4 RepNCSPELAN4 + car weight 1.8
 # ====================================================
-# 改动 (vs V16):
-#   1. P4 PAN 融合后新增 RepNCSPELAN4[256,128,64,1] — 强化P4特征表达
+# Changes (vs V16):
+#   1. Added RepNCSPELAN4[256,128,64,1] after P4 PAN fusion — strengthens P4 feature representation
 #   2. car cls_weight 1.6→1.8
 #
-# RepNCSPELAN4: YOLOv9/GELAN 构建块, 训练多分支→推理融合为单conv
-# 原理: 通道split→双RepCSP分支→concat→1×1压缩, 零推理代价
+# RepNCSPELAN4: YOLOv9/GELAN building block. Trains with multiple branches,
+# fuses into a single conv at inference (zero inference cost).
+# Principle: channel split → dual RepCSP branches → concat → 1×1 compression.
 #
-# P3 完全不变, person/cycle 不受影响
-# 继承V16: imgsz=800, TAL 4px, CoordAtt, WIoUv3, E2ELoss
+# P3 unchanged, person/cycle unaffected.
+# Inherits V16: imgsz=800, TAL 4px, CoordAtt, WIoUv3, E2ELoss
 
 # Parameters
 nc: 7
@@ -54,4 +55,4 @@ head:
   - [-1, 1, CoordAtt, [32]]                          # 22 P4 CoordAtt
 
   # Detect
-  - [[17, 22], 1, Detect, [nc]]                       # 23 P3+P4双头
+  - [[17, 22], 1, Detect, [nc]]                       # 23 P3+P4 dual-head

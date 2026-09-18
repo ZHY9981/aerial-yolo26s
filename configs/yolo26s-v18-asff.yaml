@@ -1,12 +1,13 @@
-# YOLO26s V18.1 — V18.0 + ASFF 双尺度空间融合
+# YOLO26s V18.1 — V18.0 + ASFF dual-scale spatial fusion
 # ====================================================
-# 改动 (vs V18.0):
-#   1. P4 CoordAtt → ECA (继承V18.0)
-#   2. P3/P4 检测头前各加 ASFFLevel 双尺度自适应融合
-#      ASFF: 逐位置学习 P3/P4 的融合权重, 抑制跨尺度梯度冲突
-#      论文: Liu et al. "Learning Spatial Fusion for SSD" arXiv 2019
+# Changes (vs V18.0):
+#   1. P4 CoordAtt → ECA (inherited from V18.0)
+#   2. Added ASFFLevel dual-scale adaptive fusion before P3/P4 detection heads
+#      ASFF: learns per-position fusion weights between P3/P4, suppresses
+#      cross-scale gradient conflicts.
+#      Paper: Liu et al. "Learning Spatial Fusion for SSD" arXiv 2019
 #
-# 继承V17: imgsz=800, batch=4, epochs=120, RepNCSPELAN4, TAL 4px
+# Inherits V17: imgsz=800, batch=4, epochs=120, RepNCSPELAN4, TAL 4px
 
 # Parameters
 nc: 7
@@ -42,7 +43,7 @@ head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]      # 14
   - [[-1, 4], 1, Concat, [1]]                        # 15
   - [-1, 2, C3k2, [256, True]]                       # 16 (P3/8-small)
-  - [-1, 1, CoordAtt, [32]]                          # 17 ⭐ P3 CoordAtt (保留)
+  - [-1, 1, CoordAtt, [32]]                          # 17 ⭐ P3 CoordAtt (kept)
 
   # PAN: P3→P4
   - [-1, 1, Conv, [256, 3, 2]]                       # 18
@@ -51,9 +52,9 @@ head:
   - [-1, 1, RepNCSPELAN4, [256, 128, 64, 1]]        # 21 P4 RepNCSPELAN4
   - [-1, 1, ECA, [256]]                               # 22 ⭐ P4 ECA
 
-  # ASFF: 双尺度自适应空间融合
+  # ASFF: dual-scale adaptive spatial fusion
   - [[17, 22], 1, ASFFLevel, [128, 256, 0]]         # 23 ⭐ ASFF_P3 (P3+↑P4)
   - [[22, 17], 1, ASFFLevel, [256, 128, 1]]         # 24 ⭐ ASFF_P4 (P4+↓P3)
 
   # Detect
-  - [[23, 24], 1, Detect, [nc]]                       # 25 P3+P4双头
+  - [[23, 24], 1, Detect, [nc]]                       # 25 P3+P4 dual-head

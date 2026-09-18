@@ -1,12 +1,13 @@
-# YOLO26s V19 — V17 + P4 Wide Channel 256→384
+# YOLO26s V19 — V17 + P4 wide channel 256→384
 # ====================================================
-# 改动 (vs V17):
-#   P4 neck 输出通道 256→384
-#   假设: P4 同时承载 car/truck/bus/freight 四类, 256ch 可能不够
-#   显存: +~600MB (3.5G余量内)
+# Changes (vs V17):
+#   P4 neck output channels 256→384
+#   Hypothesis: P4 carries car/truck/bus/freight (4 classes) simultaneously;
+#   256ch may be insufficient.
+#   VRAM: +~600MB (within 3.5GB headroom)
 #
-# P3 完全不变, person/cycle 不受影响
-# 继承V17: imgsz=800, batch=4, epochs=120, CoordAtt, RepNCSPELAN4, TAL 4px
+# P3 unchanged, person/cycle unaffected.
+# Inherits V17: imgsz=800, batch=4, epochs=120, CoordAtt, RepNCSPELAN4, TAL 4px
 
 # Parameters
 nc: 7
@@ -52,4 +53,4 @@ head:
   - [-1, 1, CoordAtt, [32]]                          # 22 P4 CoordAtt 384ch
 
   # Detect
-  - [[17, 22], 1, Detect, [nc]]                       # 23 P3(128ch)+P4(384ch)双头
+  - [[17, 22], 1, Detect, [nc]]                       # 23 P3(128ch)+P4(384ch) dual-head

@@ -1,20 +1,24 @@
-# YOLO26s V16 — P3+P4 双检测头 + Per-Scale CoordAtt
+# YOLO26s V16 — P3+P4 dual-head + per-scale CoordAtt
 # ====================================================
-# 改动 (vs V14):
-#   1. 删除 P5 骨干 CoordAtt — P5检测头已删, P5层的CoordAtt信号经两次上采样
-#      才到P3/P4, 效率极低, 移除后P5只做特征提取(SPPF→C2PSA)
-#   2. P3 检测头前新增 CoordAtt[32] — 直接增强120×120空间注意力
-#   3. P4 检测头前新增 CoordAtt[32] — 直接增强60×60空间注意力
-#   4. car weight 1.3→1.8, truck weight 1.0→1.3 (在loss.py中配置)
+# Changes (vs V14):
+#   1. Removed P5 backbone CoordAtt — P5 detection head is gone, so P5-level
+#      CoordAtt signals would require two upsampling steps to reach P3/P4,
+#      losing spatial precision. P5 now only does feature extraction (SPPF→C2PSA).
+#   2. Added CoordAtt[32] before the P3 detection head — directly enhances
+#      120×120 spatial attention.
+#   3. Added CoordAtt[32] before the P4 detection head — directly enhances
+#      60×60 spatial attention.
+#   4. car weight 1.3→1.8, truck weight 1.0→1.3 (configured in loss.py)
 #
-# 设计逻辑:
-#   - V15证明: 128ch压缩P5无法恢复car, 感受野不是根因
-#   - car漏检根因重定位: P4特征表达不足
-#   - 每尺度独立CoordAtt > 单个共享CoordAtt(跨FPN衰减)
+# Design rationale:
+#   - V15 proved: compressing P5 to 128ch cannot recover car detection;
+#     receptive field is not the root cause.
+#   - Car miss-detection root cause re-located: insufficient P4 feature representation.
+#   - Per-scale independent CoordAtt > single shared CoordAtt (avoids cross-FPN decay).
 #
-# 继承V14:
-#   - imgsz=960, TAL stride=4px, class weight person×2/cycle×3
-#   - P3(256ch)+P4(512ch)双头, 无P5检测头
+# Inherited from V14:
+#   - imgsz=800, TAL stride=4px, class weight person×2/cycle×3
+#   - P3(256ch)+P4(512ch) dual-head, no P5 detection head
 #   - WIoUv3, E2ELoss, scale=0.3, close_mosaic=10
 
 # Parameters
@@ -28,7 +32,7 @@ scales:
   l: [1.00, 1.00, 512]
   x: [1.00, 1.50, 512]
 
-# Backbone — P5层做纯特征提取, 无CoordAtt
+# Backbone — P5 layer does pure feature extraction, no CoordAtt
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
@@ -40,9 +44,9 @@ backbone:
   - [-1, 1, Conv, [1024, 3, 2]]       # 7-P5/32
   - [-1, 2, C3k2, [1024, True]]        # 8
   - [-1, 1, SPPF, [1024, 5, 3, True]]  # 9
-  - [-1, 2, C2PSA, [1024]]             # 10 — CoordAtt删除, SPPF直连C2PSA
+  - [-1, 2, C2PSA, [1024]]             # 10 — CoordAtt removed, SPPF → C2PSA direct
 
-# Head — P3+P4双头, 各带独立CoordAtt
+# Head — P3+P4 dual-head, each with independent CoordAtt
 head:
   # --- FPN: P5→P4 ---
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 11
@@ -53,13 +57,13 @@ head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]     # 14
   - [[-1, 4], 1, Concat, [1]]                       # 15 cat backbone P3
   - [-1, 2, C3k2, [256, True]]                      # 16 (P3/8-small)
-  - [-1, 1, CoordAtt, [32]]                         # 17 ⭐ P3专属 CoordAtt
+  - [-1, 1, CoordAtt, [32]]                         # 17 ⭐ P3 dedicated CoordAtt
 
   # --- PAN: P3→P4 ---
   - [-1, 1, Conv, [256, 3, 2]]                      # 18
   - [[-1, 13], 1, Concat, [1]]                       # 19 cat FPN P4
   - [-1, 2, C3k2, [512, True]]                      # 20 (P4/16-medium)
-  - [-1, 1, CoordAtt, [32]]                         # 21 ⭐ P4专属 CoordAtt
+  - [-1, 1, CoordAtt, [32]]                         # 21 ⭐ P4 dedicated CoordAtt
 
   # --- Detect ---
-  - [[17, 21], 1, Detect, [nc]]                      # 22 P3(17)+P4(21)双头
+  - [[17, 21], 1, Detect, [nc]]                      # 22 P3(17)+P4(21) dual-head
