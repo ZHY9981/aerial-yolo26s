@@ -108,7 +108,7 @@ CoordAtt source is in [`patches/coordatt.py`](patches/coordatt.py).
 > **Dataset availability**: aerial_v9 is curated from public aerial datasets (aerial.v1i CC BY 4.0,
 > Aerial Vehicle Detection MIT, aerial.v3i MIT). Due to license terms and total size (~10 GB),
 > the full dataset is **not open-sourced** in this repository. Please contact the owner for access,
-> or prepare a compatible dataset using the template in [`data/data.yaml.template`](data/data.yaml.template).
+> or prepare a compatible dataset using the config in [`data/data.yaml`](data/data.yaml).
 > See [`docs/data_cleaning_report.md`](docs/data_cleaning_report.md) for the data curation process.
 
 **Class distribution (aerial_v9 train instances):**
@@ -207,7 +207,6 @@ pip install -r requirements.txt          # includes ultralytics==8.4.12 base
 # Apply custom patches from patches/ to add CoordAtt, WIoU v3, TAL 4px
 
 # Prepare data
-cp data/data.yaml.template data/data.yaml
 # Edit data/data.yaml — set path to your aerial_v9 directory
 
 # Train best model (V16, dual-head + CoordAtt)
@@ -255,7 +254,7 @@ python scripts/eval.py --weights V16.0/best.pt --data data/data.yaml
 │   ├── README.md               # Detailed modification log
 │   └── coordatt.py             # CoordAtt module source
 ├── data/
-│   ├── data.yaml.template      # Dataset configuration template
+│   ├── data.yaml               # Dataset configuration (edit path for local use)
 │   └── val_samples/            # 50-image CC BY 4.0 subset for verification
 │       ├── val_data.yaml       # Mini val config
 │       ├── images/             # 50 images from aerial.v1i (CC BY 4.0)
@@ -291,3 +290,4 @@ If you find this work useful, please cite:
 ## License
 
 MIT License — see [LICENSE](LICENSE).
+                                             
