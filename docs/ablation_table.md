@@ -46,7 +46,7 @@
 <tr><td align="center">V11.0</td><td>VisDrone2019 benchmark (10-class)</td><td align="center">32.65%</td><td align="center">18.33%</td><td align="center">—</td><td align="center">Comparison</td></tr>
 <tr><td align="center">V12.0</td><td>imgsz 640 → 800</td><td align="center">71.58%</td><td align="center">50.27%</td><td align="center">—</td><td align="center">+1.07%</td></tr>
 <tr><td align="center">V13.0</td><td>P2 high-res head</td><td align="center">66.68%</td><td align="center">46.55%</td><td align="center">—</td><td align="center">❌ OOM</td></tr>
-<tr><td align="center">V14.0</td><td>P3+P4 dual-head, imgsz=960</td><td align="center">73.71%</td><td align="center"><b>52.65%</b></td><td align="center">6.82M</td><td align="center">Peak mAP₅₀₋₉₅</td></tr>
+<tr><td align="center">V14.0</td><td>P3+P4 dual-head — <i>5 changes bundled</i> †</td><td align="center">73.71%</td><td align="center"><b>52.65%</b></td><td align="center">6.82M</td><td align="center">Peak mAP₅₀₋₉₅</td></tr>
 <tr><td align="center">V15.0</td><td>BiFPN + compressed P5 128ch</td><td align="center">72.85%</td><td align="center">50.18%</td><td align="center">—</td><td align="center">Neutral</td></tr>
 <tr bgcolor="#fffbe6"><td align="center"><b>V16.0</b></td><td><b>P3+P4 + per-scale CoordAtt, imgsz=800</b></td><td align="center"><b>74.00%</b></td><td align="center">52.11%</td><td align="center"><b>7.03M</b></td><td align="center"><b>🏆 Best</b></td></tr>
 <tr><td align="center">V17.0</td><td>+ P4 RepNCSPELAN4</td><td align="center">73.52%</td><td align="center">51.27%</td><td align="center">—</td><td align="center">Neutral</td></tr>
@@ -56,8 +56,13 @@
 </tbody>
 </table>
 
-<sub>V1–V6 (early explorations) and full per-version preprocessing records are in the local version
-archive. "Neutral" = within noise of the preceding best, not adopted.</sub>
+<sub>† V14's jump bundles five simultaneous changes (head removal, TAL threshold, class weighting,
+augmentation scale, imgsz 800→960) — not a single-variable ablation. The isolated head-count
+effect is measured by V16 vs V20: <b>+0.71%</b>.<br>
+V1–V7 used earlier, differently-scoped datasets (V1–V6: 6-class <code>aerial</code>; V7: noisy
+5-class <code>aerial_merged</code>) and are not comparable to the V8+ benchmark — see
+<a href="early_experiments.md">early_experiments.md</a>. "Neutral" = within noise of the
+preceding best, not adopted.</sub>
 
 ---
 
@@ -122,8 +127,10 @@ Identical across all versions unless noted.
 
 1. **Data > Architecture** — switching from noisy VisDrone to curated aerial_v9 gave **+12.56%**
    mAP@0.5, more than all architectural changes combined.
-2. **Dual-head beats triple-head on 8 GB** — removing P5 saves 32% params and ~40% VRAM while
-   *improving* mAP by **+2.1%**. Counterintuitive, but reproducible under the memory constraint.
+2. **Dual-head beats triple-head on 8 GB** — the controlled comparison (V16 vs V20, both with
+   CoordAtt at imgsz=800; only head count differs) gives **+0.71%** mAP. Note that the V12→V14
+   pair shows a larger +2.1% gap, but that comparison changed five variables at once (head count,
+   TAL, class weighting, augmentation scale, imgsz) — we report the isolated effect as +0.71%.
 3. **WIoU v3 is the highest-ROI change** — **+1.78%** with zero VRAM cost (≈2 lines of code).
 4. **CoordAtt is cheap but effective** — negligible parameter cost, **+2.4%** Precision.
 5. **TAL 4 px threshold boosts small objects directly** — person/cycle improve **+6–7%** each.
@@ -141,25 +148,4 @@ Identical across all versions unless noted.
 
 **🎯 Car detection (67.3%)**
 
-Lags small-object classes on V16. The class sits at the P4→P5 boundary, so removing P5
-disproportionately harmed it. Current work explores SimOTA center-prior and SGLoss-style
-adaptive grid selection to recover P2-head benefits without the OOM.
-
-</td>
-<td valign="top" width="50%">
-
-**⚖️ Rare-class generalization**
-
-Freight and small-bus (< 2% of instances each) score well on val but reflect limited visual
-diversity. Potential directions: few-shot augmentation or soft-labeling; cross-dataset
-generalization remains untested.
-
-</td>
-</tr>
-</table>
-
----
-
-<div align="center">
-<sub>Part of the <a href="../README.md">aerial-yolo26s</a> project · RTX 5060 Laptop 8 GB</sub>
-</div>
+Lags small-object classes on V16. The class sits at the P4→P5 boundary, so removing P

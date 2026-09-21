@@ -22,12 +22,12 @@
 }
 
 % === Title ===
-\title{\textbf{Resource-Constrained Aerial Small-Object Detection\\with YOLO26s and Coordinate Attention}}
+\title{\textbf{How Far Can Aerial Detection Go on 8 GB?\\A Systematic Ablation Study of Aerial Small-Object Detection}}
 
 \author{
     Haoyi (Yuki) Zou\\[2mm]
     \small Independent Research\\[1mm]
-    \small \texttt{https://github.com/ZHY9981/Drone\_yolo\_7types}
+    \small \texttt{https://github.com/ZHY9981/aerial-yolo26s}
 }
 
 \date{July 2026}
@@ -46,7 +46,7 @@ a P3+P4 dual-head design, WIoU v3 loss, and a reduced TaskAlignedAssigner pixel 
 achieves 74.00\% mAP@0.5 and 52.11\% mAP@0.5:0.95 with only 7.03M parameters, operating within
 an 8 GB VRAM budget at 4.0 ms inference latency. We also document four failed experiments and six
 key insights, including the counterintuitive finding that a dual-head architecture outperforms
-triple-head by 2.1\% mAP under memory constraints.
+triple-head by 0.71\% mAP under memory constraints, in a controlled comparison.
 \end{abstract}
 
 % ======================================================================
@@ -146,16 +146,25 @@ directly enhances the 120$\times$120 (P3) and 60$\times$60 (P4) feature maps.
 
 \subsection{P3+P4 Dual-Head Architecture}
 
-Removing the P5 detection head reduces parameter count by 32\% (from 10.3M to 7.03M for YOLO26s)
-and saves approximately 40\% of detection-head VRAM. This freed memory is reallocated to larger
-P3/P4 feature channels, improving small-object feature quality.
+Removing the P5 detection head reduces the parameter count from 8.06\,M (triple-head, V20)
+to 7.03\,M (dual-head, V16) and frees a portion of detection-head VRAM. This freed memory is
+reallocated to larger P3/P4 feature channels, improving small-object feature quality.
 
-The counterintuitive result is that the dual-head configuration \textit{improves} mAP by +2.1\%
-over triple-head (V20 vs V16 in our ablations). This is not because P5 is useless—the P5 head
-detects large objects (buses, freight trucks) effectively—but because under the 8 GB memory
-constraint, the memory saved by removing P5 allows larger P3/P4 channels that improve the
-detection of the majority of targets (person, cycle, car, truck), which collectively account
-for over 80\% of instances.
+The counterintuitive result is that the dual-head configuration \textit{improves} mAP over
+triple-head. In our controlled comparison — V16 (dual-head) versus V20 (triple-head), both with
+per-scale CoordAtt at imgsz=800, differing \textit{only} in head count — the dual-head variant
+gains \textbf{+0.71\%} mAP@0.5. This is not because P5 is useless (the P5 head detects large
+objects such as buses and freight trucks effectively), but because under the 8 GB memory
+constraint, the memory saved by removing P5 allows larger P3/P4 channels that improve detection
+of the majority of targets (person, cycle, car, truck), which collectively account for over
+80\% of instances.
+
+\begin{quote}
+\textbf{Note on effect size.} An earlier version pair (V12 $\rightarrow$ V14) exhibits a larger
++2.1\% gap, but that comparison changed five variables simultaneously (head count, TAL threshold,
+class weighting, augmentation scale, and imgsz). We report the controlled V16-vs-V20 result
+(+0.71\%) as the honest isolated effect of the head-count change.
+\end{quote}
 
 \subsection{WIoU v3 Loss}
 
@@ -322,8 +331,9 @@ Four experiments failed to improve performance, and we document them as honest r
     \item \textbf{Data quality beats architecture.} Switching from noisy VisDrone to curated
           aerial\_v9 yielded +12.56\% mAP@0.5 (V7 $\rightarrow$ V8)—more than all four
           architectural modifications combined.
-    \item \textbf{Dual-head outperforms triple-head on 8 GB.} Removing P5 saves 32\% parameters
-          and improves mAP by +2.1\%. The memory saved enables larger P3/P4 channels that
+    \item \textbf{Dual-head outperforms triple-head on 8 GB.} In a controlled comparison (V16
+          vs V20, only head count differs), the dual-head variant gains +0.71\% mAP while using
+          about 13\% fewer parameters. The memory saved enables larger P3/P4 channels that
           benefit the most common target classes.
     \item \textbf{WIoU v3 is the highest-ROI change.} +1.78\% mAP@0.5 with zero VRAM cost and
           approximately 5 lines of code changed.
@@ -396,12 +406,10 @@ in \emph{Proc. CVPR}, 2021, pp. 13713--13722.
 
 \bibitem{tong2023wise}
 Z.~Tong, Y.~Chen, Z.~Xu, and R.~Yu,
-``Wise-IoU: Bounding Box Regression Loss with Dynamic Focusing Mechanism,''
-\emph{arXiv preprint arXiv:2301.10051}, 2023.
-
+``Wise-IoU: Bounding Box Regression Loss with Dyna
 \bibitem{feng2021toad}
 C.~Feng, Y.~Zhong, Y.~Gao, M.~R.~Scott, and W.~Huang,
-``TOOD: Task-aligned One-stage Object Detection,''
+``TOOD: Task-aligned One-stage Object Detection,
 in \emph{Proc. ICCV}, 2021, pp. 3490--3499.
 
 \bibitem{li2022generalized}

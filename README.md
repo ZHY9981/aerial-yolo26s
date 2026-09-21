@@ -1,10 +1,10 @@
 <div align="center">
 
-# YOLO26s + CoordAtt
+# How Far Can Aerial Detection Go on 8 GB?
 
-**Resource-Constrained Aerial Small-Object Detection**
+**A Systematic Ablation Study of Aerial Small-Object Detection on Consumer Hardware**
 
-*Detecting 7 classes of tiny targets from drone imagery on an 8 GB consumer laptop GPU*
+*7-class tiny-target detection from drone imagery on an RTX 5060 Laptop GPU*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
@@ -105,7 +105,7 @@ customized Ultralytics 8.4.12 fork.
 | # | Modification | Targets | Impact |
 |:-:|:-------------|:--------|:-------|
 | 1 | **Coordinate Attention (CoordAtt)** | Positional info loss | +2.4% Precision, negligible params |
-| 2 | **P3+P4 dual-head** | VRAM overcommitment | −32% params, +2.1% mAP on 8 GB |
+| 2 | **P3+P4 dual-head** | VRAM overcommitment | −13% params, +0.71% mAP vs triple-head (controlled) |
 | 3 | **WIoU v3 loss** | Small-object gradient | +1.78% mAP@0.5, zero VRAM cost |
 | 4 | **TAL 4 px threshold** | Small-object assignment | +6–7% on person/cycle |
 | 5 | **Class weighting** | Long-tail imbalance | person ×2.0, cycle ×3.0, bus ×1.8, small-bus ×1.5 |
@@ -119,11 +119,17 @@ customized Ultralytics 8.4.12 fork.
 <br>
 
 A P2 high-resolution head (25,600 cells) would help small objects, but its alignment matrix
-in the TaskAlignedAssigner exceeds 8 GB VRAM at batch=4. Removing the P5 head frees ~40% of
-detection-head VRAM and 32% of parameters. This memory is reallocated to larger P3/P4 channels,
-which improves detection of the majority of targets (person, cycle, car, truck — over 80% of
-instances). The trade-off: car detection at the P4→P5 boundary degrades slightly (67.3% vs
-~71% on triple-head), which remains an open problem.
+in the TaskAlignedAssigner exceeds 8 GB VRAM at batch=4. Removing the P5 head cuts parameters
+from 8.06 M to 7.03 M and frees detection-head VRAM. This memory is reallocated to larger
+P3/P4 channels, which improves detection of the majority of targets (person, cycle, car, truck
+— over 80% of instances). The trade-off: car detection at the P4→P5 boundary degrades slightly
+(67.2% vs ~71% on triple-head), which remains an open problem.
+
+**On the size of this effect.** Our cleanest head-count comparison is **V16 (dual-head, 74.00%)
+vs V20 (triple-head, 73.29%)** — a **+0.71%** mAP@0.5 gain, with the only changed variable being
+the number of detection heads. An earlier version pair (V12 → V14) shows a larger +2.1% gap, but
+that comparison changed five variables at once (head count, TAL threshold, class weighting,
+augmentation scale, and imgsz). We report the controlled +0.71% as the honest isolated effect.
 
 </details>
 
@@ -175,7 +181,7 @@ small-bus    987  █
 
 ## 🔬 Ablation Study
 
-Each version isolates exactly one variable. All training on RTX 5060 8 GB, batch=4, SGD lr₀=0.01.
+Most versions isolate exactly one variable. All training on RTX 5060 8 GB, batch=4, SGD lr₀=0.01.
 
 | Version | Key Change | mAP@0.5 | mAP@0.5:0.95 | Δ | Status |
 |:-------:|:-----------|:-------:|:------------:|:--:|:------:|
@@ -183,7 +189,7 @@ Each version isolates exactly one variable. All training on RTX 5060 8 GB, batch
 | V8.1 | + WIoU v3 loss | 69.59% | 47.00% | +1.78% | ✅ |
 | V10.0 | + CoordAtt + WIoU + aerial_v9 | 70.51% | 49.33% | +0.92% | Milestone |
 | V12.0 | imgsz 640 → 800 | 71.58% | 50.27% | +1.07% | ✅ |
-| V14.0 | P3+P4 dual-head, imgsz=960 | 73.71% | **52.65%** | +2.13% | Peak mAP₅₀₋₉₅ |
+| V14.0 | P3+P4 dual-head — *5 changes bundled* † | 73.71% | **52.65%** | +2.13% | Peak mAP₅₀₋₉₅ |
 | **V16.0** | **+ per-scale CoordAtt, imgsz=800** | **74.00%** | 52.11% | +0.29% | **🏆 Best** |
 | V17.0 | + P4 RepNCSPELAN4 | 73.52% | 51.27% | −0.48% | Neutral |
 | V18.0 | + ECA / ASFF attention | 72.91% | 50.84% | −1.09% | Neutral |
@@ -192,6 +198,17 @@ Each version isolates exactly one variable. All training on RTX 5060 8 GB, batch
 
 > 📄 **Complete 20+ version log** with per-class breakdowns, failed experiments, and full training
 > configuration → [`docs/ablation_table.md`](docs/ablation_table.md)
+>
+> **† On the V14 jump.** V14's +2.13% bundles five simultaneous changes (head removal, TAL
+> threshold, class weighting, augmentation scale, imgsz 800→960) — it is not a single-variable
+> ablation. The *isolated* effect of the head-count change is measured by the V16-vs-V20 pair:
+> **+0.71%**. See [Why dual-head beats triple-head](#-architecture).
+>
+> **On version numbering.** This table starts at V8.0. Versions V1–V6 used the 6-class `aerial`
+> dataset and V7 used noisy 5-class `aerial_merged`, so their numbers are **not comparable** to the
+> V8+ 7-class benchmark and are excluded to keep the ablation controlled. A short summary of that
+> exploratory phase — including two early failures that shaped later design choices — is in
+> [`docs/early_experiments.md`](docs/early_experiments.md).
 
 <details>
 <summary><b>Failed experiments (honest record)</b> (click to expand)</summary>
@@ -295,33 +312,7 @@ python scripts/eval.py --weights runs/detect/runs/aerial_train/yolo26s_v16/weigh
 1. **Data > Architecture** — switching from noisy VisDrone to curated aerial_v9 gave **+12.56%**
    mAP@0.5, more than all architectural changes combined.
 2. **Attention is cheap but effective** — CoordAtt adds negligible params but **+2.4%** Precision.
-3. **Dual-head beats triple-head on 8 GB** — removing P5 saves 32% params and ~40% VRAM while
-   *improving* mAP by **+2.1%**. Counterintuitive but reproducible under the memory constraint.
-4. **Assignment threshold matters for small objects** — TAL 4 px (vs default 8 px) directly boosted
-   person/cycle by **+6–7%**.
-
----
-
-## 🛣️ Future Work
-
-| Direction | Motivation | Status |
-|:----------|:-----------|:-------|
-| **Onboard UAV inference** | Migrate the trained model to embedded hardware (Jetson-class) for real-time detection during flight. The memory-conscious architecture (7.03 M params, 6.8 GB train / ~1.5 GB inference) is designed with this path in mind. | Planned |
-| **Car detection recovery** | Car AP lags at 67.3% due to the removed P5 head. Explore SimOTA center-prior and SGLoss-style adaptive grid selection to recover P2-level benefit without OOM. | Exploring |
-| **TensorRT quantization** | Quantize for further latency reduction on lower-power edge devices. | Planned |
-| **Rare-class generalization** | Freight / small-bus (< 2% of instances) need few-shot augmentation or soft-labeling; cross-dataset testing pending. | Open |
-
----
-
-## 📂 Repository Structure
-
-```
-aerial-yolo26s/
-├── configs/                          # Model architecture definitions
-│   ├── yolo26s-v16-p34-coordatt.yaml #   ← best model (V16)
-│   ├── yolo26s-v17-repncsp4.yaml
-│   ├── yolo26s-v18-asff.yaml
-│   ├── yolo26s-v19-widep4.yaml
-│   └── yolo26s-v20-ppa-dysample.yaml
-├── scripts/
-│   ├── train_v16.py                  # Training ent
+3. **Dual-head beats triple-head on 8 GB** — the controlled head-count comparison (V16 vs V20,
+   both with CoordAtt at imgsz=800) gives **+0.71%** mAP. Counterintuitive but reproducible
+   under the memory constraint.
+4. **A
