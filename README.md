@@ -24,21 +24,25 @@
 
 ## 🔭 Overview
 
-While most computer vision research assumes access to high-end GPUs (A100, 4090) and large-scale
-cloud compute, real-world work does not always afford that luxury. Fieldwork, in particular,
-means carrying a single laptop into the outdoors — and a laptop GPU carries only a few gigabytes
-of VRAM.
+Most computer vision research assumes access to high-end GPUs (A100, 4090) and large-scale cloud
+compute. This project starts from the opposite end: **a single consumer laptop (RTX 5060, 8 GB
+VRAM), no cloud, no hardware upgrade.**
 
-This project grew out of exactly that situation: **performing aerial object detection on a
-consumer laptop (RTX 5060, 8 GB VRAM) in an outdoor setting**, where upgrading hardware or
-renting cloud GPUs is not an option. The guiding question is therefore not *"how high can we push
-mAP with unlimited hardware?"* — that is well-studied. It is:
+The initial constraint was practical — a laptop was the only compute available. But working under
+it revealed something more interesting: **which design decisions actually matter when memory is
+the binding constraint?** Many published detection architectures are tuned for a memory budget
+that a real deployment rarely has. So the project's guiding question became:
 
-> **How good can detection get under a hard 8 GB VRAM budget, and which design decisions matter
-> most under that constraint?**
+> **How good can aerial detection get under a hard 8 GB VRAM budget, and which architectural
+> decisions matter most under that constraint?**
 
-Every design decision in this project is evaluated by both **accuracy and memory cost**,
-documented through **20+ versioned ablation experiments**.
+Every design decision in this project is evaluated by both **accuracy and memory cost**, documented
+through **20+ versioned ablation experiments**.
+
+**Scope of this work.** This repository covers the full research and training pipeline, plus
+**offline analysis of drone footage** on a consumer laptop — the scenario that runs today. Onboard
+real-time inference on embedded UAV hardware (Jetson-class) is **future work**; the memory-conscious
+design decisions documented here are made with that migration path in mind.
 
 ---
 
@@ -295,6 +299,17 @@ python scripts/eval.py --weights runs/detect/runs/aerial_train/yolo26s_v16/weigh
 
 ---
 
+## 🛣️ Future Work
+
+| Direction | Motivation | Status |
+|:----------|:-----------|:-------|
+| **Onboard UAV inference** | Migrate the trained model to embedded hardware (Jetson-class) for real-time detection during flight. The memory-conscious architecture (7.03 M params, 6.8 GB train / ~1.5 GB inference) is designed with this path in mind. | Planned |
+| **Car detection recovery** | Car AP lags at 67.3% due to the removed P5 head. Explore SimOTA center-prior and SGLoss-style adaptive grid selection to recover P2-level benefit without OOM. | Exploring |
+| **TensorRT quantization** | Quantize for further latency reduction on lower-power edge devices. | Planned |
+| **Rare-class generalization** | Freight / small-bus (< 2% of instances) need few-shot augmentation or soft-labeling; cross-dataset testing pending. | Open |
+
+---
+
 ## 📂 Repository Structure
 
 ```
@@ -309,37 +324,4 @@ aerial-yolo26s/
 │   ├── train_v16.py                  # Training entry point
 │   └── eval.py                       # Evaluation with full metrics
 ├── patches/                          # Custom Ultralytics modifications
-│   ├── README.md                     #   ← detailed modification log
-│   └── coordatt.py                   #   ← CoordAtt module source
-├── data/
-│   ├── data.yaml                     # Dataset config (edit path for local use)
-│   └── val_samples/                  # 50-image CC BY 4.0 verification subset
-├── docs/
-│   ├── ablation_table.md             # Complete 20+ version log
-│   ├── data_cleaning_report.md       # Data curation examples
-│   ├── technical_report.pdf          # 7-page technical report
-│   └── technical_report.tex          # LaTeX source
-├── results/                          # Plots and visualizations
-└── requirements.txt
-```
-
----
-
-## 📖 Citation
-
-```bibtex
-@misc{aerial_yolo26s_2026,
-  title        = {Resource-Constrained Aerial Small Object Detection with YOLO26s + CoordAtt},
-  author       = {Zou, Haoyi},
-  year         = {2026},
-  url          = {https://github.com/ZHY9981/aerial-yolo26s}
-}
-```
-
-## 📜 License
-
-Released under the [MIT License](LICENSE).
-
-<div align="center">
-<sub>Built with PyTorch · Ultralytics · CUDA &nbsp;|&nbsp; Developed on RTX 5060 Laptop 8 GB</sub>
-</div>
+│   ├── README.md       
