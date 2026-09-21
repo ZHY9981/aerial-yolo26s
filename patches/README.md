@@ -55,52 +55,55 @@ mechanism that adaptively focuses on small targets without penalizing large ones
 
 ---
 
-## 3. TAL 4 px Threshold
+## 3. TAL Small-GT Threshold (8 px → 4 px)
 
-**Paper:** Feng et al., "TOOD: Task-aligned One-stage Object Detection," ICCV 2021 (original TAL);
+**Paper:** Feng et al., "TOOD: Task-aligned One-stage Object Detection," ICCV 2021 (original TAL).
 
-**Change:** Modified `ultralytics/utils/tal.py` — changed `self.stride_tensor` minimum
-from 8 px to 4 px in the positive-sample assignment logic.
+**Change:** In `ultralytics/utils/tal.py`, inside `TaskAlignedAssigner.select_candidates_in_gts()`,
+the small-box mask threshold was halved:
 
-**Why:** The default TAL positive-sample threshold of 8 px means any anchor point
-more than 8 pixels from a ground-truth center is classified as negative. For small
-aerial targets (e.g., a person at 20×15 px), this excludes >80% of valid anchor
-points from positive training signals.
+```python
+# before (default)
+wh_mask = gt_bboxes_xywh[..., 2:] < self.stride[0]          # < 8 px for P3
+# after (V14 onward)
+wh_mask = gt_bboxes_xywh[..., 2:] < (self.stride[0] / 2)    # < 4 px for P3
+```
 
-At 4 px, small targets get ~4× more positive anchors per instance.
+**Why:** Ground-truth boxes smaller than the smallest stride may contain **no anchor center**,
+so they receive no positive assignment and contribute no localization gradient. The assigner
+handles this by expanding such boxes to `stride_val` so at least one anchor lands inside. The
+default cutoff (8 px) only caught boxes smaller than 8 px; halving it to 4 px extends this
+rescue to boxes in the **4–8 px** range — exactly where the smallest aerial targets live.
 
-**Impact:** Person +6%, cycle +7% (V8 → V10 comparison, holding CoordAtt constant).
+**Impact:** Person +6%, cycle +7% (V8 → V10 comparison, holding other factors constant).
 
-**Modification location:** `ultralytics/utils/tal.py`, in the `TaskAlignedAssigner`
-initialization or `get_pos_mask` method — reduce the stride floor from 8 to 4.
+**Location:** `ultralytics/utils/tal.py`, `select_candidates_in_gts()` — the `wh_mask` line.
+
+> **Note:** this is a threshold on the *ground-truth box size*, not on the distance between an
+> anchor and a GT center. The goal is identical — give tiny targets positive anchors — but the
+> mechanism operates on GT boxes, not anchor-center distance.
 
 ---
 
 ## 4. Class-Weighted Loss
 
-**Why:** The aerial_v9 dataset has extreme class imbalance:
-`person: 73,770 | car: 69,840 | cycle: 14,356 | truck: 13,772 | bus: 6,994 | freight: 1,306 | small-bus: 1,117`
+**Why:** The aerial_v9 dataset has extreme class imbalance. Direct counts from the training
+labels (8,075 images):
 
-Standard equal-weight training causes the model to optimize for person/car at the
-expense of freight (< 2% of instances).
-
-**V16 weights (in `ultralytics/utils/loss.py`, `v8DetectionLoss.__init__`):**
-
-```python
-self.class_weight = torch.tensor([2.0, 3.0, 1.8, 1.5, 1.0, 1.0, 1.0])
-#                                person cycle bus small-bus car truck freight
+```
+person    69,061      car       68,280
+cycle     14,191      truck     13,278
+bus        6,106      freight    1,180
+small-bus     987
 ```
 
-Multiplied into the classification loss for each class. Cycle gets the highest
-weight (3.0×) because it is both rare and small. Freight and small-bus use
-base weight because they are large and easy to detect despite low instance counts.
+Standard equal-weight training causes the model to optimize for person/car and under-serve the
+rare classes.
 
----
+**Applied weights (`ultralytics/utils/loss.py`, `v8DetectionLoss`):**
 
-## Reproducing from Scratch
+```python
+cls_weight = torch.tensor([2.0, 3.0, 1.8, 1.5, 1.0, 1.0, 1.0])
+```
 
-1. Install base ultralytics: `pip install ultralytics==8.4.12`
-2. Apply the above patches to the installed package
-3. Use the model configs in `configs/` and training scripts in `scripts/`
-
-See `configs/` for the YOLO26s model architecture definitions used in each version.
+The vector is indexed by the class order 

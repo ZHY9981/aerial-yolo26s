@@ -83,7 +83,7 @@ OVERALL   █████████░░░  74.0%      52.1%        81.3%   
 - **Small objects dominate the error.** person AP₅₀₋₉₅ = 24.7% and cycle = 17.6% — precise
   localization, not classification, is the bottleneck.
 - **Large objects are near-solved.** bus, small-bus, and freight all exceed 90% AP@0.5.
-- **car is the outlier.** Despite 69,840 training instances it reaches only 47.3% AP₅₀₋₉₅ —
+- **car is the outlier.** Despite 68,280 training instances it reaches only 47.3% AP₅₀₋₉₅ —
   removing P5 disproportionately affected the class that sits at the P4→P5 boundary.
 
 ---

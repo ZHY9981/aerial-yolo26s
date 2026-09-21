@@ -106,8 +106,8 @@ error.
 
 \subsection{Class Imbalance}
 
-The aerial\_v9 dataset exhibits extreme long-tail distribution: person (73,770 instances) and
-car (69,840) dominate, while freight (1,306) and small-bus (1,117) each represent less than 2\%
+The aerial\_v9 dataset exhibits extreme long-tail distribution: person (69,061 instances) and
+car (68,280) dominate, while freight (1,180) and small-bus (987) each represent less than 2\%
 of training instances. Standard equal-weight classification loss causes the model to optimize
 almost exclusively for the majority classes.
 
@@ -173,27 +173,33 @@ outlier degree, and $\alpha, \delta$ are hyperparameters controlling suppression
 Small aerial targets (high $\beta$ due to difficult localization) receive amplified gradients,
 while large targets (low $\beta$) are unaffected. This modification costs zero additional VRAM.
 
-\subsection{TAL Positive-Sample Threshold}
+\subsection{TAL Small-GT Threshold}
 
-The default TaskAlignedAssigner (TAL) \cite{feng2021toad} uses a stride-tensor minimum of 8 pixels
-for positive-sample assignment. At P3 resolution (stride 8), this means any ground-truth center
-more than 8 pixels from an anchor point is labeled negative. For a 20-pixel pedestrian, this
-excludes over 80\% of valid P3 anchor points from receiving positive gradients.
+The TaskAlignedAssigner (TAL) \cite{feng2021toad} can fail on ground-truth boxes smaller than
+the smallest feature stride: such boxes may contain no anchor center at all and therefore
+receive no positive assignment. TAL handles this by expanding the affected boxes to
+\texttt{stride\_val} so at least one anchor lands inside. The default cutoff for this rescue
+is \texttt{stride[0]} (8 px at P3).
 
-We reduce the threshold to 4 pixels. This gives small targets approximately 4$\times$ more
-positive anchors per instance, directly improving recall on person and cycle by +6--7\% each.
+We halve this cutoff to \texttt{stride[0]/2} (4 px), extending the rescue to boxes in the
+\textbf{4--8 px} range — the size band where the smallest aerial targets (pedestrians, cyclists)
+concentrate. This yields approximately 4$\times$ more positive anchors for the smallest targets
+and improves person/cycle recall by +6--7\% each.
 
 \subsection{Class-Weighted Loss}
 
-We apply per-class multiplicative weights to the classification loss:
+We apply per-class multiplicative weights to the classification loss. The weight vector is
+indexed by the class order defined in \texttt{data.yaml}:
 
 \begin{equation}
     \mathbf{w} = [2.0, 3.0, 1.8, 1.5, 1.0, 1.0, 1.0]
 \end{equation}
 
-corresponding to \texttt{[person, cycle, bus, small-bus, car, truck, freight]}. Cycle receives
-the highest weight (3.0$\times$) because it is both rare (14K instances) and small. Freight and
-small-bus, while rare, are large and easy to detect, so they use base weight.
+corresponding to \texttt{[person, cycle, bus, small-bus, car, truck, freight]} — that is,
+the effective weights are person~$\times$2.0, cycle~$\times$3.0, bus~$\times$1.8,
+small-bus~$\times$1.5, with car/truck/freight at base weight. Cycle receives the highest weight
+(3.0$\times$) because it is both rare (14K instances) and small; person is up-weighted as the
+hardest small-object class.
 
 % ======================================================================
 \section{Experiments}
@@ -336,7 +342,7 @@ Four experiments failed to improve performance, and we document them as honest r
 \subsection{Car Detection Bottleneck}
 
 Car detection on V16.0 (67.3\% AP50) lags person (60.2\%) in absolute terms but represents the
-largest opportunity for improvement given car's high instance count (69,840). Current hypotheses:
+largest opportunity for improvement given car's high instance count (68,280). Current hypotheses:
 
 \begin{itemize}[leftmargin=*]
     \item \textbf{Scale ambiguity:} Cars viewed from 50--100 m altitude span a wide range of
@@ -400,12 +406,12 @@ in \emph{Proc. ICCV}, 2021, pp. 3490--3499.
 
 \bibitem{li2022generalized}
 X.~Li, W.~Wang, L.~Wu, S.~Chen, X.~Hu, J.~Li, J.~Tang, and J.~Yang,
-``Generalized Focal Loss: Learning Qualified and Distributed Bounding Boxes for Dense Object Detection,''
+``Generalized Focal Loss: Learning Qualified and Distributed Bounding Boxes for Dense Object Detection,
 in \emph{Proc. NeurIPS}, 2020.
 
 \bibitem{jocher2023ultralytics}
 G.~Jocher, A.~Chaurasia, and J.~Qiu,
-``Ultralytics YOLO,''
+``Ultralytics YOLO,
 \emph{Ultralytics}, 2023. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
 
 \end{thebibliography}

@@ -108,7 +108,7 @@ customized Ultralytics 8.4.12 fork.
 | 2 | **P3+P4 dual-head** | VRAM overcommitment | −32% params, +2.1% mAP on 8 GB |
 | 3 | **WIoU v3 loss** | Small-object gradient | +1.78% mAP@0.5, zero VRAM cost |
 | 4 | **TAL 4 px threshold** | Small-object assignment | +6–7% on person/cycle |
-| 5 | **Class weighting** | Long-tail imbalance | `[2.0, 3.0, 1.8, 1.5, 1.0, 1.0, 1.0]` |
+| 5 | **Class weighting** | Long-tail imbalance | person ×2.0, cycle ×3.0, bus ×1.8, small-bus ×1.5 |
 
 > 📄 All custom modifications are documented in [`patches/README.md`](patches/README.md);
 > full CoordAtt source in [`patches/coordatt.py`](patches/coordatt.py).
@@ -141,16 +141,16 @@ instances). The trade-off: car detection at the P4→P5 boundary degrades slight
 
 **Classes:** `person · cycle · bus · small-bus · car · truck · freight`
 
-**Class distribution (train instances):**
+**Class distribution (train instances, counted from labels across 8,075 images):**
 
 ```
-person    73,770  ████████████████████████████████████████
-car       69,840  ██████████████████████████████████████
-cycle     14,356  ████████
-truck     13,772  ███████
-bus        6,994  ████
-freight    1,306  █
-small-bus  1,117  █
+person    69,061  ████████████████████████████████████████
+car       68,280  ███████████████████████████████████████
+cycle     14,191  ████████
+truck     13,278  ███████
+bus        6,106  ███
+freight    1,180  █
+small-bus    987  █
 ```
 
 ### Dataset History
@@ -209,23 +209,26 @@ Each version isolates exactly one variable. All training on RTX 5060 8 GB, batch
 
 ---
 
-## ⚖️ Quantitative Comparison
+## ⚖️ Reference Benchmark
 
-V16.0 vs standard baselines under identical conditions (aerial_v9, imgsz=800, batch=4, 200 epochs).
+To give context for V16.0, we report our own VisDrone2019 result (V11.0) against a published
+reference on the same public dataset.
 
-| Model | mAP@0.5 | mAP@0.5:0.95 | Params | VRAM (bs=4) | Notes |
-|:------|:-------:|:------------:|:------:|:-----------:|:------|
-| YOLOv8s (vanilla) | 70.21% | 48.55% | 11.1 M | 6.2 GB | Standard triple-head baseline |
-| YOLOv8s-p2 | — | — | 11.1 M | **OOM** | P2 head fails allocation on 8 GB |
-| **YOLO26s + CoordAtt (V16)** | **74.00%** | **52.11%** | **7.03 M** | **6.8 GB** | Dual-head + per-scale CoordAtt |
-| VisDrone2019 SOTA (YOLOv8s-p2) | ~43.7% | — | 11.1 M | — | Public benchmark, 10-class, *different dataset* |
+| Model | Dataset | Classes | mAP@0.5 | Note |
+|:------|:--------|:-------:|:-------:|:-----|
+| **YOLO26s + aerial tuning (V11)** | VisDrone2019-DET official | 10 | **32.65%** | Our result, 6,471 train / 548 val |
+| YOLOv8s-p2 (published reference) | VisDrone2019-DET | 10 | ~43.7% | External SOTA reference on the same benchmark |
 
-**Takeaways:**
+**Reading this correctly.** This is a **secondary** comparison on a *public* dataset, not our
+primary benchmark. Our V11 was trained with aerial-oriented hyperparameters (tuned for the
+aerial_v9 class schema) and applied to VisDrone's 10-class setting without re-tuning, so the
+~11 pp gap largely reflects domain mismatch rather than an architectural limit. The primary
+result of this project is **74.00% mAP@0.5 on our own aerial_v9 dataset** (7 classes) — see
+[Key Results](#-key-results).
 
-- V16 beats YOLOv8s by **+3.79%** mAP@0.5 with **37% fewer parameters** (7.03 M vs 11.1 M).
-- YOLOv8s-p2 — the standard solution for small objects — **cannot run on 8 GB VRAM**. The dual-head
-  design is not a preference; it is a necessity under this constraint.
-- The VisDrone comparison is across a *different dataset* and should not be read as a direct gap.
+> No other cross-model comparison is reported, because we have not trained YOLOv8/YOLO11
+> baselines on aerial_v9 ourselves. We would rather report fewer numbers than publish
+> ones we cannot reproduce.
 
 ---
 
@@ -321,7 +324,4 @@ aerial-yolo26s/
 │   ├── yolo26s-v19-widep4.yaml
 │   └── yolo26s-v20-ppa-dysample.yaml
 ├── scripts/
-│   ├── train_v16.py                  # Training entry point
-│   └── eval.py                       # Evaluation with full metrics
-├── patches/                          # Custom Ultralytics modifications
-│   ├── README.md       
+│   ├── train_v16.py                  # Training ent
