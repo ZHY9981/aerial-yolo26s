@@ -1,8 +1,11 @@
 # Validation Sample Set — 50 Images
 
-This directory contains 50 validation images and their YOLO-format labels,
-sourced from **Roboflow aerial.v1i (CC BY 4.0 license)** — the same public
-dataset that forms part of the curated `aerial_v9` dataset used in our experiments.
+This directory contains 50 validation images and their YOLO-format labels.
+
+The **images** come from **Roboflow aerial.v1i (CC BY 4.0)** — one of the public
+sources that form the `aerial_v9` dataset. The **labels** have been remapped to the
+project's 7-class schema (see `docs/data_cleaning_report.md` for the class mapping),
+so they match what the trained model expects.
 
 ## Purpose
 
@@ -23,8 +26,3 @@ python scripts/eval.py --weights best.pt --data data/val_samples/val_data.yaml -
 # (Note: 50 images is not statistically significant; the full 2,224-image
 #  validation set result is 74.00% mAP@0.5 as reported in README)
 ```
-
-## License
-
-These images originate from **Roboflow aerial.v1i (CC BY 4.0)**.
-Full license: https://creativecommons.org/licenses/by/4.0/

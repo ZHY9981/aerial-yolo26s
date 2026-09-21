@@ -217,12 +217,15 @@ hardest small-object class.
 
 \subsection{Dataset}
 
-The aerial\_v9 dataset is curated from three public sources: aerial.v1i (Roboflow, CC BY 4.0),
-Aerial Vehicle Detection (MIT), and aerial.v3i (MIT). The curation process involved merging the
-three sources, unifying class taxonomies (e.g., motorcycle + bicycle $\rightarrow$ cycle,
-van $\rightarrow$ car), and manually inspecting approximately 500 random samples to remove label
-noise and add missing annotations. The final dataset contains 8,075 training, 2,224 validation,
-and 738 test images across 7 classes.
+The aerial\_v9 dataset is assembled from three public sources: aerial.v1i (Roboflow, CC BY 4.0),
+Aerial Vehicle Detection (MIT), and aerial.v3i (MIT). Assembling it required unifying the source
+class taxonomies into a single 7-class schema — for example, \texttt{bicycle} + \texttt{motorcycle}
++ \texttt{person\_on\_bicycle} $\rightarrow$ \texttt{cycle}, and AVD's \texttt{small bus}
+$\rightarrow$ \texttt{small-bus}. An earlier version of the dataset (V7) also incorporated
+VisDrone2019; its noisy labels degraded person/cycle recall to $\sim$50\%, so it was discarded in
+favor of the cleaner sources listed above. The final dataset contains 8,075 training, 2,224
+validation, and 738 test images across 7 classes. See \texttt{docs/data\_cleaning\_report.md} for
+the full class mapping.
 
 \subsection{Training Configuration}
 
@@ -236,7 +239,7 @@ All experiments use a fixed hardware and training protocol:
 GPU & RTX 5060 Laptop 8 GB \\
 Batch size & 4 (P2 experiments: 2) \\
 Optimizer & SGD, lr$_{0}$=0.01, momentum=0.937, weight\_decay=0.0005 \\
-Epochs & 200 (V8--V16), 120 (V17--V20) \\
+Epochs & 200 (V8--V16), 160 (V17), 120 (V18--V20) \\
 Image size & 640--960 (V16 uses 800) \\
 Augmentation & mosaic=0.5, scale=0.3, no mixup/copy-paste \\
 Loss & WIoU v3 (box), VFL (cls), DFL \\
@@ -265,16 +268,22 @@ Version & Key Change & mAP@0.5 & mAP@0.5:0.95 & $\Delta$ \\
 V8.0  & Baseline (clean data) & 67.81\% & 44.31\% & --- \\
 V8.1  & + WIoU v3 loss & 69.59\% & 47.00\% & +1.78\% \\
 V10.0 & + CoordAtt + aerial\_v9 & 70.51\% & 49.33\% & +0.92\% \\
-V12.0 & imgsz 640$\rightarrow$800 & 71.58\% & 50.27\% & +1.07\% \\
-V14.0 & P3+P4 dual-head, imgsz=960 & 73.71\% & \textbf{52.65\%} & +2.13\% \\
+V12.0 & imgsz 640$\rightarrow$800\footnotemark[1] & 71.58\% & 50.27\% & +1.07\% \\
+V14.0 & P3+P4 dual-head, imgsz=960\footnotemark[2] & 73.71\% & \textbf{52.65\%} & +2.13\% \\
 \textbf{V16.0} & \textbf{P3+P4 + per-scale CoordAtt, 800} & \textbf{74.00\%} & 52.11\% & +0.29\% \\
-V17.0 & + P4 RepNCSPELAN4 & 73.52\% & 51.27\% & $-$0.48\% \\
-V18.0 & + ECA / ASFF & 72.91\% & 50.84\% & $-$1.09\% \\
-V19.0 & P4 wide channel 256$\rightarrow$384 & 73.44\% & 51.63\% & $-$0.56\% \\
+V17.0 & + P4 RepNCSPELAN4 & 73.97\% & 51.56\% & $-$0.03\% \\
+V18.0 & + ECA / ASFF & 73.46\% & 51.16\% & $-$0.51\% \\
+V19.0 & P4 wide channel 256$\rightarrow$384 & 73.29\% & 50.89\% & $-$0.17\% \\
 V20.0 & P3+P4+P5 triple-head (clean) & 73.29\% & 50.41\% & $-$0.71\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\footnotetext[1]{V12's jump also lowered batch from 8 to 4, forced by VRAM at imgsz=800 — the
+two changed together, so +1.07\% is not a pure resolution ablation.}
+\footnotetext[2]{V14 bundles five simultaneous changes (head removal, TAL threshold, class
+weighting, augmentation scale, imgsz); see Section~\ref{sec:experiments} for the isolated
+head-count comparison (V16 vs V20, +0.71\%).}
 
 Table~\ref{tab:perclass} shows the per-class breakdown of V16.0, our production model.
 
@@ -406,20 +415,22 @@ in \emph{Proc. CVPR}, 2021, pp. 13713--13722.
 
 \bibitem{tong2023wise}
 Z.~Tong, Y.~Chen, Z.~Xu, and R.~Yu,
-``Wise-IoU: Bounding Box Regression Loss with Dyna
+``Wise-IoU: Bounding Box Regression Loss with Dynamic Focusing Mechanism,''
+\emph{arXiv preprint arXiv:2301.10051}, 2023.
+
 \bibitem{feng2021toad}
 C.~Feng, Y.~Zhong, Y.~Gao, M.~R.~Scott, and W.~Huang,
-``TOOD: Task-aligned One-stage Object Detection,
+``TOOD: Task-aligned One-stage Object Detection,''
 in \emph{Proc. ICCV}, 2021, pp. 3490--3499.
 
 \bibitem{li2022generalized}
 X.~Li, W.~Wang, L.~Wu, S.~Chen, X.~Hu, J.~Li, J.~Tang, and J.~Yang,
-``Generalized Focal Loss: Learning Qualified and Distributed Bounding Boxes for Dense Object Detection,
+``Generalized Focal Loss: Learning Qualified and Distributed Bounding Boxes for Dense Object Detection,''
 in \emph{Proc. NeurIPS}, 2020.
 
 \bibitem{jocher2023ultralytics}
 G.~Jocher, A.~Chaurasia, and J.~Qiu,
-``Ultralytics YOLO,
+``Ultralytics YOLO,''
 \emph{Ultralytics}, 2023. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
 
 \end{thebibliography}

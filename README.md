@@ -163,7 +163,7 @@ small-bus    987  █
 
 | Dataset | Images | Classes | Source |
 |:--------|:------:|:-------:|:-------|
-| **aerial_v9** (current) | 8,075 / 2,224 / 738 | 7 | Curated from public sources, label noise cleaned |
+| **aerial_v9** (current) | 8,075 / 2,224 / 738 | 7 | Assembled from 3 public sources, unified class schema |
 | aerial_v8 (early) | 3,800 | 7 | Public aerial datasets, superseded |
 | aerial_merged (early) | 7,148 | 5 | aerial.v1i (CC BY 4.0) + VisDrone2019 |
 | aerial (early) | 2,090 | 6 | Roboflow aerial.v1i (CC BY 4.0) |
@@ -181,7 +181,8 @@ small-bus    987  █
 
 ## 🔬 Ablation Study
 
-Most versions isolate exactly one variable. All training on RTX 5060 8 GB, batch=4, SGD lr₀=0.01.
+Most versions isolate exactly one variable. All training on RTX 5060 8 GB, SGD lr₀=0.01 (batch=8
+through V11, batch=4 from V12 onward, where the larger imgsz required it).
 
 | Version | Key Change | mAP@0.5 | mAP@0.5:0.95 | Δ | Status |
 |:-------:|:-----------|:-------:|:------------:|:--:|:------:|
@@ -191,10 +192,10 @@ Most versions isolate exactly one variable. All training on RTX 5060 8 GB, batch
 | V12.0 | imgsz 640 → 800 | 71.58% | 50.27% | +1.07% | ✅ |
 | V14.0 | P3+P4 dual-head — *5 changes bundled* † | 73.71% | **52.65%** | +2.13% | Peak mAP₅₀₋₉₅ |
 | **V16.0** | **+ per-scale CoordAtt, imgsz=800** | **74.00%** | 52.11% | +0.29% | **🏆 Best** |
-| V17.0 | + P4 RepNCSPELAN4 | 73.52% | 51.27% | −0.48% | Neutral |
-| V18.0 | + ECA / ASFF attention | 72.91% | 50.84% | −1.09% | Neutral |
-| V19.0 | P4 wide channel 256 → 384 | 73.44% | 51.63% | −0.56% | Neutral |
-| V20.0 | P3+P4+P5 triple-head (clean) | 73.29% | 50.41% | −0.71% | Neutral |
+| V17.0 | + P4 RepNCSPELAN4 | 73.97% | 51.56% | −0.03% | Neutral |
+| V18.0 | + ECA / ASFF attention | 73.46% | 51.16% | −0.51% | Neutral |
+| V19.0 | P4 wide channel 256 → 384 | 73.29% | 50.89% | −0.17% | Neutral |
+| V20.0 | P3+P4+P5 triple-head | 73.29% | 50.41% | −0.71% (vs V16) | Neutral |
 
 > 📄 **Complete 20+ version log** with per-class breakdowns, failed experiments, and full training
 > configuration → [`docs/ablation_table.md`](docs/ablation_table.md)
@@ -302,7 +303,7 @@ python scripts/eval.py --weights runs/detect/runs/aerial_train/yolo26s_v16/weigh
 
 | Constraint | Effect | Solution |
 |:-----------|:-------|:---------|
-| RTX 5060 Laptop · 8 GB | Forces batch=4, blocks P2 head | P3+P4 dual-head architecture |
+| RTX 5060 Laptop · 8 GB | Caps batch at 8; batch=4 at imgsz=800; blocks P2 head | P3+P4 dual-head architecture |
 | Fixed (not purchasable) | Cannot relax via hardware | Every design evaluated by accuracy **and** memory cost |
 
 ---
@@ -313,6 +314,4 @@ python scripts/eval.py --weights runs/detect/runs/aerial_train/yolo26s_v16/weigh
    mAP@0.5, more than all architectural changes combined.
 2. **Attention is cheap but effective** — CoordAtt adds negligible params but **+2.4%** Precision.
 3. **Dual-head beats triple-head on 8 GB** — the controlled head-count comparison (V16 vs V20,
-   both with CoordAtt at imgsz=800) gives **+0.71%** mAP. Counterintuitive but reproducible
-   under the memory constraint.
-4. **A
+   both with CoordAtt at im

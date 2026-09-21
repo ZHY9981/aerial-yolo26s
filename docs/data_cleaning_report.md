@@ -1,10 +1,10 @@
 <div align="center">
 
-# Data Cleaning Report
+# Dataset Construction
 
-**Building `aerial_v9` — a 7-class aerial detection dataset from public sources**
+**Building `aerial_v9` — how the 7-class aerial dataset was assembled**
 
-*Label-noise analysis and curation procedures*
+*From three public sources to a unified 7-class schema*
 
 </div>
 
@@ -12,117 +12,97 @@
 
 ## Navigation
 
-[Pipeline](#pipeline) •
-[Cleaning Criteria](#cleaning-criteria) •
-[Case Studies](#case-studies) •
-[Quantitative Impact](#quantitative-impact)
+[Source Datasets](#source-datasets) •
+[Class Mapping](#class-mapping) •
+[Dataset Evolution](#dataset-evolution) •
+[The VisDrone Problem](#the-visdrone-problem) •
+[Honest Note on Records](#honest-note-on-records)
 
 ---
 
-## Pipeline
+## Source Datasets
 
-```
-aerial.v1            Roboflow · CC BY 4.0 · 6 classes · 2,985 images
-       │
-       ├── merge ────  Aerial Vehicle Detection  (MIT · ~5,000 images)
-       │
-       ├── merge ────  aerial.v3i                (MIT · additional images)
-       │
-       ├── clean ────  manual inspection of ~500 random samples
-       │
-       └── relabel ──  class consolidation + corrected boxes
-                      │
-                      ▼
-              aerial_v9   ·  7 classes
-              8,075 train / 2,224 val / 738 test
-```
+`aerial_v9` was assembled from four public sources:
+
+| Source | License | Images | Classes | URL |
+|:-------|:--------|:------:|:--------|:----|
+| aerial.v1i | CC BY 4.0 | 2,985 | 6 | [Roboflow *krauseswelt/aerial-qjpyp*](https://universe.roboflow.com/krauseswelt/aerial-qjpyp) |
+| Aerial Vehicle Detection | MIT | ~5,000 | 8 | [Roboflow *sovitopencvuniversity/aerial-vehicle-detection*](https://universe.roboflow.com/sovitopencvuniversity/aerial-vehicle-detection-0uc42) |
+| aerial.v3i | MIT | ~5,300 | 1 (`person`) | [Roboflow *mukeshs-workspace-mytt6/aerial-lahmj*](https://universe.roboflow.com/mukeshs-workspace-mytt6/aerial-lahmj) |
+| VisDrone2019 | CC BY-NC-SA | 6,471 / 548 | 10 | [VisDrone official](https://github.com/VisDrone/VisDrone-Dataset) |
+
+An `aerial.v1i` class schema: `[bicycle, bus, car, motorcycle, person, truck]`.
+The Aerial Vehicle Detection schema: `[PMT, articulated-bus, bus, car, freight, motorbike, small bus, truck]`.
 
 ---
 
-## Cleaning Criteria
+## Class Mapping
 
-Label quality was the single largest driver of performance in this project
-(**+12.56%** mAP@0.5 — see [Quantitative Impact](#quantitative-impact)). Five rules were applied:
+The final dataset uses **7 classes**: `person, cycle, bus, small-bus, car, truck, freight`.
+The mapping from source classes:
 
-| # | Criterion | Rule |
-|:-:|:----------|:-----|
-| 1 | **Label noise removal** | Remove boxes that clearly misclassify the object |
-| 2 | **Missing annotation** | Add boxes for visible objects that were unlabeled |
-| 3 | **Occlusion threshold** | Remove objects occluded > 70% |
-| 4 | **Edge truncation** | Keep objects truncated at image boundary if > 50% visible |
-| 5 | **Class consolidation** | `motorcycle` + `bicycle` → `cycle` · `van` → `car` |
+| Final class | Sources |
+|:------------|:--------|
+| `person` | aerial.v1i `person` + VisDrone `pedestrian` + aerial.v3i `person` |
+| `cycle` | aerial.v1i `bicycle` + `motorcycle` + VisDrone `person_on_bicycle` |
+| `bus` | aerial.v1i `bus` + AVD `bus` + AVD `articulated-bus` |
+| `small-bus` | AVD `small bus` |
+| `car` | aerial.v1i `car` + AVD `car` |
+| `truck` | aerial.v1i `truck` + AVD `truck` |
+| `freight` | AVD `freight` |
 
----
-
-## Case Studies
-
-Five representative examples of the label noise found and how each was resolved.
-
-### 1 · Tricycle labeled as bicycle
-
-| | |
-|:--|:--|
-| **Source** | VisDrone2019 |
-| **Issue** | A tricycle with a canopy was labeled `bicycle`. |
-| **Fix** | Re-labeled as `cycle` with a bounding box that fully captures the vehicle. |
-| **Why it matters** | Canopied tricycles are a distinct vehicle type in Chinese urban scenes; labeling them `bicycle` causes false positives for the cycle detector. |
-
-### 2 · Adjacent-frame inconsistency
-
-| | |
-|:--|:--|
-| **Source** | aerial.v1 (Roboflow) |
-| **Issue** | The same parked truck is `truck` in frame *N* but `car` in frame *N+1* (~0.5 s apart), despite near-identical box coordinates. |
-| **Fix** | Re-labeled frame *N+1* to `truck` — the cargo bed is visible from the aerial angle. |
-
-### 3 · Missed small objects
-
-| | |
-|:--|:--|
-| **Source** | Aerial Vehicle Detection (MIT) |
-| **Issue** | In a parking-lot scene, 3 of 8 visible cars were unlabeled (partially shadow-occluded). |
-| **Fix** | Added boxes for all visible cars; shadow-occluded vehicles boxed over the visible portion only. |
-
-### 4 · Manhole cover labeled as person
-
-| | |
-|:--|:--|
-| **Source** | aerial.v1 (Roboflow) |
-| **Issue** | A circular dark spot (~20 px) was labeled `person`. At low resolution, manhole covers and standing pedestrians have similar visual signatures. |
-| **Fix** | Removed the false annotation — verified stationary and metallic across adjacent frames. |
-
-### 5 · Articulated truck labeled as bus
-
-| | |
-|:--|:--|
-| **Source** | aerial.v3i (MIT) |
-| **Issue** | A long articulated truck + trailer was labeled `bus` (elongated rectangular shape resembles a bus from above). |
-| **Fix** | Re-labeled `truck` — the visible gap between tractor and trailer distinguishes it from a bus. |
+> The `cycle = bicycle + motorcycle + person_on_bicycle` consolidation is documented
+> explicitly in the V7.0 training log. The remaining mappings follow directly from the
+> source class names above. AVD's `PMT` (public motor transport) is not used in the final
+> schema.
 
 ---
 
-## Quantitative Impact
+## Dataset Evolution
 
-Approximate label-noise reduction by merge stage:
+The dataset went through four stages as the class schema and label quality were refined:
 
-| Stage | Noise rate | Nature of errors |
-|:------|:----------:|:-----------------|
-| VisDrone merge | ~15% | Mostly class confusion (motorcycle↔bicycle, bus↔truck) |
-| aerial.v1 → aerial.v8 | ~3% | Fewer errors, larger dataset |
+| Stage | Dataset | Train | Classes | Used by |
+|:------|:--------|:-----:|:-------:|:--------|
+| 1 | aerial.v1i | 2,985 | 6 | V1–V6 |
+| 2 | aerial_merged | 7,148 | 5 | V7 |
+| 3 | aerial_v8 | 3,800 | 7 | V8–V9 |
+| 4 | **aerial_v9** | **8,075** | **7** | V10–V20 |
 
-**End-to-end effect on detection:**
+**Stage 1 → 2** merged aerial.v1i with VisDrone (5,058 images filtered to 5 relevant classes),
+creating `aerial_merged`. This added data but also imported VisDrone's noisy labels.
 
-```
-V7 (uncleaned labels)    55.25%  mAP@0.5
-V8 (cleaned labels)      67.81%  mAP@0.5
-─────────────────────────────────────────
-Δ                         +12.56%   ← exceeds all architectural changes combined
-```
+**Stage 2 → 3** discarded the VisDrone-merged data and switched to cleaner sources, establishing
+the final 7-class schema.
 
-This confirms the project's central finding: **data quality beat architecture** by a wide margin.
+**Stage 3 → 4** expanded to 8,075 images, largely by adding ~5,300 `person` images from
+aerial.v3i (MIT-licensed, low-altitude scenes) — which is exactly what fixed the person-class
+weakness that had persisted through V8.
+
+---
+
+## The VisDrone Problem
+
+`aerial_merged` (V7) reached **55.25% mAP@0.5** but only **50.36% recall** — nearly half of all
+targets were being missed. The cause was label noise from the VisDrone merge: dense overhead
+scenes with many small, crowded targets produced inconsistent and often-missing annotations.
+
+Switching to the cleaned dataset (V8.0) raised mAP@0.5 to **67.81%** — a **+12.56%** jump with
+no architectural change. This is the project's central finding: **data quality beat architecture.**
+
+---
+
+## Honest Note on Records
+
+This document describes the dataset at the level supported by the preserved training logs
+(V7, V8, V10, and the version overview). Those logs record the *sources*, the *class mapping*,
+and the *aggregate effect* of the data change.
+
+A per-image cleaning log — specific annotations corrected, images removed, edge cases handled —
+was **not systematically preserved** during the project. Rather than reconstruct plausible-sounding
+examples after the fact, this document reports only what the surviving records actually support.
 
 ---
 
 <div align="center">
-<sub>Part of the <a href="../README.md">aerial-yolo26s</a> project · see <a href="ablation_table.md">ablation_table.md</a> for full results</sub>
-</div>
+<sub>Part of the <a href="../README.md">aerial-yolo26s</a> project · see <a href="ablation_table.md">ablation_table.md</a> f
