@@ -106,4 +106,4 @@ rare classes.
 cls_weight = torch.tensor([2.0, 3.0, 1.8, 1.5, 1.0, 1.0, 1.0])
 ```
 
-The vector is indexed by the class order 
+The vector is indexed by the class order

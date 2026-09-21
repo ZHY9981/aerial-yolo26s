@@ -267,9 +267,10 @@ Version & Key Change & mAP@0.5 & mAP@0.5:0.95 & $\Delta$ \\
 \midrule
 V8.0  & Baseline (clean data) & 67.81\% & 44.31\% & --- \\
 V8.1  & + WIoU v3 loss & 69.59\% & 47.00\% & +1.78\% \\
-V10.0 & + CoordAtt + aerial\_v9 & 70.51\% & 49.33\% & +0.92\% \\
+V10.0 & + CoordAtt + aerial\_v9\footnotemark[3] & 70.51\% & 49.33\% & +0.92\% \\
 V12.0 & imgsz 640$\rightarrow$800\footnotemark[1] & 71.58\% & 50.27\% & +1.07\% \\
-V14.0 & P3+P4 dual-head, imgsz=960\footnotemark[2] & 73.71\% & \textbf{52.65\%} & +2.13\% \\
+V12.2 & + cls 0.5$\rightarrow$0.7 (fine-tune) & 72.10\% & 50.43\% & +0.52\% \\
+V14.0 & P3+P4 dual-head, imgsz=960\footnotemark[2] & 73.71\% & \textbf{52.65\%} & +1.61\% \\
 \textbf{V16.0} & \textbf{P3+P4 + per-scale CoordAtt, 800} & \textbf{74.00\%} & 52.11\% & +0.29\% \\
 V17.0 & + P4 RepNCSPELAN4 & 73.97\% & 51.56\% & $-$0.03\% \\
 V18.0 & + ECA / ASFF & 73.46\% & 51.16\% & $-$0.51\% \\
@@ -284,6 +285,8 @@ two changed together, so +1.07\% is not a pure resolution ablation.}
 \footnotetext[2]{V14 bundles five simultaneous changes (head removal, TAL threshold, class
 weighting, augmentation scale, imgsz); see Section~\ref{sec:experiments} for the isolated
 head-count comparison (V16 vs V20, +0.71\%).}
+\footnotetext[3]{V8.0--V8.1 used the smaller aerial\_v8 set; V10.0 onward use aerial\_v9. The
+V8.1$\rightarrow$V10.0 row therefore also changes dataset, not only the loss/attention modules.}
 
 Table~\ref{tab:perclass} shows the per-class breakdown of V16.0, our production model.
 

@@ -105,4 +105,5 @@ examples after the fact, this document reports only what the surviving records a
 ---
 
 <div align="center">
-<sub>Part of the <a href="../README.md">aerial-yolo26s</a> project · see <a href="ablation_table.md">ablation_table.md</a> f
+<sub>Part of the <a href="../README.md">aerial-yolo26s</a> project · see <a href="ablation_table.md">ablation_table.md</a> for version results</sub>
+</div>

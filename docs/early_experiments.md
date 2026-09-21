@@ -28,14 +28,14 @@ person, truck), 2,985 images (Roboflow aerial.v1i, CC BY 4.0). V7 moved to **`ae
 
 | Version | Dataset | Classes | mAP@0.5 (best) | What it was |
 |:-------:|:--------|:-------:|:--------------:|:------------|
-| V1.0 | aerial | 6 | 49.26% | First working YOLO26s training run |
-| V1.1 | aerial | 6 | 47.08% | Augmentation experiments (mixup found harmful) |
-| V1.2 | aerial | 6 | 47.70% | Further augmentation tuning |
-| V2.0 | aerial | 6 | 46.25% | Hyperparameter search |
-| V3.0 | aerial | 6 | 43.82% | Hyperparameter search |
-| V4.0 | aerial | 6 | 46.90% | Two-stage freeze/unfreeze — **failed** |
-| V5.0 | aerial | 6 | 48.47% | Train-from-scratch baseline |
-| V6.0 | aerial | 6 | 49.03% | Continued tuning → best of the 6-class runs |
+| V1.0 | aerial | 6 | 49.26% | First working YOLO26s training run (defaults) |
+| V1.1 | aerial | 6 | 47.08% | Relay + mixup/copy_paste — **failed** |
+| V1.2 | aerial | 6 | 47.70% | Relay + geometric augmentation — **failed** |
+| V2.0 | aerial | 6 | 46.25% | Geometric aug from scratch — **failed** |
+| V3.0 | aerial | 6 | 43.82% | Official YOLO26s recipe (lr too low) — **failed** |
+| V4.0 | aerial | 6 | 46.82% | Two-stage freeze/unfreeze — **failed** |
+| V5.0 | aerial | 6 | 48.47% | AdamW + lr0=0.001 + scale=0.9 (near-miss) |
+| V6.0 | aerial | 6 | 49.03% | MuSGD + scale=0.9 → best of the 6-class runs |
 | V7.0 | aerial_merged | 5 | 55.25% | VisDrone-augmented — **recall only 50%** |
 
 > The dataset changed twice in this phase (`aerial` → `aerial_merged` → noise-cleaned
@@ -52,7 +52,7 @@ person, truck), 2,985 images (Roboflow aerial.v1i, CC BY 4.0). V7 moved to **`ae
 
 ## Two failures that shaped later decisions
 
-### V4.0 — Freeze/unfreeze two-stage training (46.90%)
+### V4.0 — Freeze/unfreeze two-stage training (46.82%)
 
 The standard transfer-learning recipe: freeze the backbone, train the head, then unfreeze and
 fine-tune at a low learning rate. It **underperformed simple from-scratch training** (V5.0

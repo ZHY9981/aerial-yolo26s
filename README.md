@@ -188,9 +188,12 @@ through V11, batch=4 from V12 onward, where the larger imgsz required it).
 |:-------:|:-----------|:-------:|:------------:|:--:|:------:|
 | V8.0 | Baseline (clean aerial_v8, 7 classes) | 67.81% | 44.31% | — | Baseline |
 | V8.1 | + WIoU v3 loss | 69.59% | 47.00% | +1.78% | ✅ |
-| V10.0 | + CoordAtt + WIoU + aerial_v9 | 70.51% | 49.33% | +0.92% | Milestone |
+| V10.0 | + CoordAtt + WIoU + aerial_v9 (8,075 img) | 70.51% | 49.33% | +0.92% | Milestone |
 | V12.0 | imgsz 640 → 800 | 71.58% | 50.27% | +1.07% | ✅ |
-| V14.0 | P3+P4 dual-head — *5 changes bundled* † | 73.71% | **52.65%** | +2.13% | Peak mAP₅₀₋₉₅ |
+| V12.1 | + copy_paste / multi-scale fine-tune | 70.89% | 49.29% | −0.69% | ❌ Failed |
+| V12.2 | Continue V12.0 (cls 0.5 → 0.7) | 72.10% | 50.43% | +0.52% | ✅ |
+| V14.0 | P3+P4 dual-head — *5 changes bundled* † | 73.71% | **52.65%** | +1.61% | Peak mAP₅₀₋₉₅ |
+| V14.1 | car weight 1.0 → 1.3 (fine-tune) | 73.69% | 52.62% | −0.02% | Neutral |
 | **V16.0** | **+ per-scale CoordAtt, imgsz=800** | **74.00%** | 52.11% | +0.29% | **🏆 Best** |
 | V17.0 | + P4 RepNCSPELAN4 | 73.97% | 51.56% | −0.03% | Neutral |
 | V18.0 | + ECA / ASFF attention | 73.46% | 51.16% | −0.51% | Neutral |
@@ -220,8 +223,9 @@ through V11, batch=4 from V12 onward, where the larger imgsz required it).
 |:-------:|:--------|:------:|:-------|
 | V4.0 | Freeze + unfreeze 2-stage training | 46.82% | COCO pretrain ≠ aerial features; train from scratch |
 | V7.0 | VisDrone noisy data | 55.25% (R=50%) | Data quality > architecture |
-| V8.2 | Transfer-learning relay (V8.1 → v9) | 69.71% | lr mismatch destroys learned features |
-| V13.0 | P2 high-res head | 66.68% | 8 GB OOM, not viable on consumer GPUs |
+| V8.2 | Transfer-learning relay (V8.1 → v9) | 69.71% | Marginal overall (+0.12%), but records disagree on per-class behavior — relay lr likely too low for the new data |
+| V12.1 | copy_paste + multi-scale fine-tune | 70.89% | copy_paste adds person/cycle false positives; −0.69% vs V12.0 |
+| V13.0 | P2 high-res head | 66.68% | 8 GB OOM; forces batch=2 + imgsz=640, cancelling P2's benefit |
 
 </details>
 
@@ -314,4 +318,69 @@ python scripts/eval.py --weights runs/detect/runs/aerial_train/yolo26s_v16/weigh
    mAP@0.5, more than all architectural changes combined.
 2. **Attention is cheap but effective** — CoordAtt adds negligible params but **+2.4%** Precision.
 3. **Dual-head beats triple-head on 8 GB** — the controlled head-count comparison (V16 vs V20,
-   both with CoordAtt at im
+   both with CoordAtt at imgsz=800) gives **+0.71%** mAP. Counterintuitive but reproducible
+   under the memory constraint.
+4. **Assignment threshold matters for small objects** — TAL 4 px (vs default 8 px) directly boosted
+   person/cycle by **+6–7%**.
+
+---
+
+## 🛣️ Future Work
+
+| Direction | Motivation | Status |
+|:----------|:-----------|:-------|
+| **Onboard UAV inference** | Migrate the trained model to embedded hardware (Jetson-class) for real-time detection during flight. The memory-conscious architecture (7.03 M params, 6.8 GB train / ~1.5 GB inference) is designed with this path in mind. | Planned |
+| **Car detection recovery** | Car AP lags at 67.3% due to the removed P5 head. Explore SimOTA center-prior and SGLoss-style adaptive grid selection to recover P2-level benefit without OOM. | Exploring |
+| **TensorRT quantization** | Quantize for further latency reduction on lower-power edge devices. | Planned |
+| **Rare-class generalization** | Freight / small-bus (< 2% of instances) need few-shot augmentation or soft-labeling; cross-dataset testing pending. | Open |
+
+---
+
+## 📂 Repository Structure
+
+```
+aerial-yolo26s/
+├── configs/                          # Model architecture definitions
+│   ├── yolo26s-v16-p34-coordatt.yaml #   ← best model (V16)
+│   ├── yolo26s-v17-repncsp4.yaml
+│   ├── yolo26s-v18-asff.yaml
+│   └── yolo26s-v19-widep4.yaml
+├── scripts/
+│   ├── train_v16.py                  # Training entry point
+│   └── eval.py                       # Evaluation with full metrics
+├── patches/                          # Custom Ultralytics modifications
+│   ├── README.md                     #   ← detailed modification log
+│   └── coordatt.py                   #   ← CoordAtt module source
+├── data/
+│   ├── data.yaml                     # Dataset config (edit path for local use)
+│   └── val_samples/                  # 50-image CC BY 4.0 verification subset
+├── docs/
+│   ├── ablation_table.md             # Complete V8-V20 version log
+│   ├── early_experiments.md          # V1-V7 exploratory phase
+│   ├── data_cleaning_report.md       # Dataset construction & class mapping
+│   ├── technical_report.pdf          # 7-page technical report
+│   └── technical_report.tex          # LaTeX source
+├── results/                          # Plots and visualizations
+└── requirements.txt
+```
+
+---
+
+## 📖 Citation
+
+```bibtex
+@misc{aerial_yolo26s_2026,
+  title        = {Resource-Constrained Aerial Small Object Detection with YOLO26s + CoordAtt},
+  author       = {Zou, Haoyi},
+  year         = {2026},
+  url          = {https://github.com/ZHY9981/aerial-yolo26s}
+}
+```
+
+## 📜 License
+
+Released under the [MIT License](LICENSE).
+
+<div align="center">
+<sub>Built with PyTorch · Ultralytics · CUDA &nbsp;|&nbsp; Developed on RTX 5060 Laptop 8 GB</sub>
+</div>
